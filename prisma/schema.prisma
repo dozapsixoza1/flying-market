@@ -8,43 +8,33 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum StaffRole {
-  OWNER
-  ADMIN
-  MODERATOR
-  HELPER
-}
-
-enum TicketStatus {
-  OPEN
-  ASSIGNED
-  IN_PROGRESS
-  WAITING
-  RESOLVED
-  CLOSED
-}
-
-enum ListingStatus {
-  DRAFT
-  PENDING
-  ACTIVE
-  RESERVED
-  SOLD
-  REJECTED
-  ARCHIVED
-}
+enum StaffRole { OWNER ADMIN MODERATOR HELPER }
+enum TicketStatus { OPEN ASSIGNED IN_PROGRESS WAITING RESOLVED CLOSED }
+enum ListingStatus { DRAFT PENDING ACTIVE RESERVED SOLD REJECTED ARCHIVED }
+enum OrderStatus { PENDING PAID DELIVERED COMPLETED CANCELLED DISPUTED REFUNDED }
+enum ReportStatus { OPEN REVIEWING RESOLVED DISMISSED }
 
 model User {
-  id          String          @id @default(cuid())
-  telegramId  BigInt?         @unique
-  username    String?         @unique
-  displayName String
-  avatarUrl   String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  staff       StaffMember?
-  listings    Listing[]
-  tickets     SupportTicket[] @relation("TicketAuthor")
+  id             String          @id @default(cuid())
+  telegramId     BigInt?         @unique
+  username       String?         @unique
+  displayName    String
+  avatarUrl      String?
+  bio            String?
+  locale         String          @default("ru")
+  isBanned       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  staff          StaffMember?
+  shop           Shop?
+  listings       Listing[]
+  buyerOrders    Order[]         @relation("BuyerOrders")
+  sellerOrders   Order[]         @relation("SellerOrders")
+  favorites      Favorite[]
+  reviewsWritten Review[]        @relation("ReviewAuthor")
+  reviewsReceived Review[]       @relation("ReviewTarget")
+  tickets        SupportTicket[] @relation("TicketAuthor")
+  messages       SupportMessage[]
 }
 
 model StaffMember {
@@ -62,26 +52,26 @@ model Permission {
   description String
   roles       RolePermission[]
 }
-
 model RolePermission {
   id           String     @id @default(cuid())
   role         StaffRole
   permissionId String
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
   @@unique([role, permissionId])
 }
 
 model Game {
-  id        String     @id @default(cuid())
-  slug      String     @unique
-  name      String
-  isActive  Boolean    @default(true)
-  listings  Listing[]
+  id         String     @id @default(cuid())
+  slug       String     @unique
+  name       String
+  icon       String?
+  coverUrl   String?
+  isActive   Boolean    @default(true)
+  sortOrder  Int        @default(0)
+  listings   Listing[]
   categories Category[]
-  createdAt DateTime   @default(now())
+  createdAt  DateTime   @default(now())
 }
-
 model Category {
   id        String    @id @default(cuid())
   gameId    String
@@ -90,10 +80,21 @@ model Category {
   isActive  Boolean   @default(true)
   game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
   listings  Listing[]
-
   @@unique([gameId, slug])
 }
-
+model Shop {
+  id          String   @id @default(cuid())
+  ownerId     String   @unique
+  name        String
+  slug        String   @unique
+  description String?
+  avatarUrl   String?
+  bannerUrl   String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
 model Listing {
   id          String        @id @default(cuid())
   sellerId    String
@@ -109,11 +110,59 @@ model Listing {
   seller      User          @relation(fields: [sellerId], references: [id])
   game        Game          @relation(fields: [gameId], references: [id])
   category    Category?     @relation(fields: [categoryId], references: [id])
-
-  @@index([gameId, status])
+  favorites   Favorite[]
+  orders      Order[]
+  @@index([gameId, status, createdAt])
   @@index([sellerId, createdAt])
 }
-
+model Favorite {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  @@id([userId, listingId])
+}
+model Order {
+  id             String      @id @default(cuid())
+  publicId       String      @unique
+  buyerId        String
+  sellerId       String
+  listingId      String
+  amountMinor    BigInt
+  currency       String
+  status         OrderStatus @default(PENDING)
+  provider       String?
+  providerRef    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  buyer          User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller         User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  listing        Listing     @relation(fields: [listingId], references: [id])
+  events         OrderEvent[]
+  @@index([buyerId, createdAt])
+  @@index([sellerId, createdAt])
+}
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  actorId   String?
+  event     String
+  details   String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+model Review {
+  id        String   @id @default(cuid())
+  authorId  String
+  targetId  String
+  orderId   String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  author    User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  target    User     @relation("ReviewTarget", fields: [targetId], references: [id])
+}
 model SupportCategory {
   id       String          @id @default(cuid())
   slug     String          @unique
@@ -121,7 +170,6 @@ model SupportCategory {
   isActive Boolean         @default(true)
   tickets  SupportTicket[]
 }
-
 model SupportTicket {
   id         String          @id @default(cuid())
   publicId   String          @unique
@@ -137,11 +185,9 @@ model SupportTicket {
   category   SupportCategory @relation(fields: [categoryId], references: [id])
   messages   SupportMessage[]
   notes      TicketNote[]
-
   @@index([status, updatedAt])
   @@index([assignedTo, status])
 }
-
 model SupportMessage {
   id        String        @id @default(cuid())
   ticketId  String
@@ -150,10 +196,9 @@ model SupportMessage {
   isStaff   Boolean       @default(false)
   createdAt DateTime      @default(now())
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
+  sender    User          @relation(fields: [senderId], references: [id])
   @@index([ticketId, createdAt])
 }
-
 model TicketNote {
   id        String        @id @default(cuid())
   ticketId  String
@@ -161,10 +206,20 @@ model TicketNote {
   body      String
   createdAt DateTime      @default(now())
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@index([ticketId, createdAt])
 }
-
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  targetType  String
+  targetId    String
+  reason      String
+  details     String?
+  status      ReportStatus @default(OPEN)
+  handledBy   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  @@index([status, createdAt])
+}
 model StaffActivityLog {
   id         String   @id @default(cuid())
   staffId    String
@@ -173,7 +228,14 @@ model StaffActivityLog {
   targetId   String
   reason     String?
   createdAt  DateTime @default(now())
-
   @@index([staffId, createdAt])
   @@index([targetType, targetId])
+}
+model ChatAccessLog {
+  id         String   @id @default(cuid())
+  staffId    String
+  conversationId String
+  reason     String
+  createdAt  DateTime @default(now())
+  @@index([conversationId, createdAt])
 }
