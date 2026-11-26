@@ -309,7 +309,7 @@ model SupportRating {
   createdAt DateTime      @default(now())
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
-model FAQArticle {
+model FaqArticle {
   id          String   @id @default(cuid())
   slug        String   @unique
   title       String
