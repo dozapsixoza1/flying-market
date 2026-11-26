@@ -21,6 +21,6 @@ export async function hasPermission(permission: StaffPermission) {
 export async function requirePermission(permission: StaffPermission) {
   const user = await getCurrentUser();
   if (!user || user.isBanned) return { ok: false as const, status: 401, user: null };
-  if (!user.staff?.isActive || !await hasPermission(permission)) return { ok: false as const, status: 403, user: null };
+  if (!user.staff?.isActive || !(await hasPermission(permission))) return { ok: false as const, status: 403, user: null };
   return { ok: true as const, user };
 }
