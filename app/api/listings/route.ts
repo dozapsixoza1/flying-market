@@ -19,6 +19,10 @@ export async function POST(request: NextRequest) {
   try {
     const game = await db.game.findFirst({ where: { id: parsed.data.gameId, isActive: true } });
     if (!game) return NextResponse.json({ error: "Game not found." }, { status: 404 });
+    if (parsed.data.categoryId) {
+      const category = await db.category.findFirst({ where: { id: parsed.data.categoryId, gameId: game.id, isActive: true } });
+      if (!category) return NextResponse.json({ error: "Category does not belong to this game." }, { status: 400 });
+    }
     const listing = await db.listing.create({ data: { ...parsed.data, priceMinor: BigInt(parsed.data.priceMinor), sellerId: user.id, status: "PENDING" } });
     return NextResponse.json({ listing: { id: listing.id, status: listing.status } }, { status: 201 });
   } catch { return NextResponse.json({ error: "Could not save listing. Database setup may be pending." }, { status: 503 }); }
