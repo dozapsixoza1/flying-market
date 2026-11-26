@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 const schema=z.object({listingId:z.string().min(1)});
 export async function GET(){
  const user=await getCurrentUser(); if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
- try{const orders=await db.order.findMany({where:{OR:[{buyerId:user.id},{sellerId:user.id}]},include:{listing:true,buyer:{select:{id:true,displayName:true}},seller:{select:{id:true,displayName:true}}},orderBy:{createdAt:"desc"},take:50});return NextResponse.json({orders:orders.map(o=>({...o,amountMinor:o.amountMinor.toString()}))});}
+ try{const orders=await db.order.findMany({where:{OR:[{buyerId:user.id},{sellerId:user.id}]},include:{listing:true,buyer:{select:{id:true,displayName:true}},seller:{select:{id:true,displayName:true}}},orderBy:{createdAt:"desc"},take:50});return NextResponse.json({orders:orders.map(o=>({...o,amountMinor:o.amountMinor.toString(),listing:{...o.listing,priceMinor:o.listing.priceMinor.toString()}}))});}
  catch{return NextResponse.json({orders:[],configured:false});}
 }
 export async function POST(request:NextRequest){
