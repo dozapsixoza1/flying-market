@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";
+import {db} from "@/lib/db";
+export async function GET(_:Request,context:{params:Promise<{listingId:string}>}){try{const {listingId}=await context.params;const listing=await db.listing.findFirst({where:{id:listingId,status:"ACTIVE"},include:{game:true,category:true,seller:{select:{id:true,displayName:true,username:true,avatarUrl:true,shop:true}}}});if(!listing)return NextResponse.json({error:"Listing not found."},{status:404});return NextResponse.json({listing:{...listing,priceMinor:listing.priceMinor.toString()}});}catch{return NextResponse.json({error:"Listing service is not configured."},{status:503});}}
