@@ -16,7 +16,12 @@ export async function POST(request:NextRequest){
   const listing=await db.listing.findUnique({where:{id:parsed.data.listingId}});
   if(!listing||listing.status!=="ACTIVE")return NextResponse.json({error:"Listing is unavailable."},{status:404});
   if(listing.sellerId===user.id)return NextResponse.json({error:"You cannot buy your own listing."},{status:400});
-  const order=await db.order.create({data:{publicId:"ORD-"+randomBytes(4).toString("hex").toUpperCase(),buyerId:user.id,sellerId:listing.sellerId,listingId:listing.id,amountMinor:listing.priceMinor,currency:listing.currency,events:{create:{actorId:user.id,event:"order.created"}}}});
+  const order=await db.$transaction(async tx=>{
+   const locked=await tx.listing.updateMany({where:{id:listing.id,status:"ACTIVE"},data:{status:"RESERVED"}});
+   if(locked.count!==1)return null;
+   return tx.order.create({data:{publicId:"ORD-"+randomBytes(4).toString("hex").toUpperCase(),buyerId:user.id,sellerId:listing.sellerId,listingId:listing.id,amountMinor:listing.priceMinor,currency:listing.currency,events:{create:{actorId:user.id,event:"order.created"}}}});
+  });
+  if(!order)return NextResponse.json({error:"This listing has just been reserved by another buyer."},{status:409});
   return NextResponse.json({order:{id:order.id,publicId:order.publicId,status:order.status},paymentRequired:true,providerConfigured:false},{status:201});
  }catch{return NextResponse.json({error:"Order service is not configured yet."},{status:503});}
 }
