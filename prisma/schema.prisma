@@ -46,6 +46,18 @@ enum ReportStatus {
   RESOLVED
   DISMISSED
 }
+enum PaymentProvider {
+  TELEGRAM_STARS
+  TON_WALLET
+  EXTERNAL
+}
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
 
 model User {
   id             String          @id @default(cuid())
@@ -177,6 +189,7 @@ model Order {
   listing        Listing     @relation(fields: [listingId], references: [id])
   events         OrderEvent[]
   conversation   Conversation?
+  payments       PaymentTransaction[]
   @@index([buyerId, createdAt])
   @@index([sellerId, createdAt])
 }
