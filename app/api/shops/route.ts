@@ -1,0 +1,7 @@
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth/session";
+const schema=z.object({name:z.string().trim().min(3).max(50),slug:z.string().trim().min(3).max(40).regex(/^[a-z0-9-]+$/),description:z.string().trim().max(1000).optional()});
+export async function GET(request:NextRequest){const slug=request.nextUrl.searchParams.get("slug");if(!slug)return NextResponse.json({error:"Shop slug is required."},{status:400});try{const shop=await db.shop.findUnique({where:{slug},include:{owner:{select:{displayName:true,username:true}},}});if(!shop)return NextResponse.json({error:"Shop not found."},{status:404});return NextResponse.json({shop});}catch{return NextResponse.json({error:"Shop service is not configured."},{status:503});}}
+export async function POST(request:NextRequest){const user=await getCurrentUser();if(!user||user.isBanned)return NextResponse.json({error:"Sign in first."},{status:401});const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Check shop name and address."},{status:400});try{const shop=await db.shop.upsert({where:{ownerId:user.id},create:{ownerId:user.id,...parsed.data},update:parsed.data});return NextResponse.json({shop},{status:201});}catch{return NextResponse.json({error:"Shop address is already taken or storage is unavailable."},{status:409});}}
