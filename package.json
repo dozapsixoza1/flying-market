@@ -17,7 +17,6 @@
     "@prisma/client": "^6.19.3",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
-    "@telegram-apps/sdk-react": "^2.0.25",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "15.5.7",
