@@ -10,7 +10,7 @@ export async function PATCH(request: NextRequest, context: {params:Promise<{tick
  const canRead=await hasPermission("tickets.read");if(!canRead)return NextResponse.json({error:"Forbidden"},{status:403});
  const canAssign=await hasPermission("tickets.assign");const canClose=await hasPermission("tickets.close");
  if(parsed.data.assignedTo!==undefined&&!canAssign)return NextResponse.json({error:"Assignment permission required."},{status:403});
- if(parsed.data.status==="CLOSED"&&!canClose)return NextResponse.json({error:"Close permission required."},{status:403});
+ if(parsed.data.status&&["RESOLVED","CLOSED"].includes(parsed.data.status)&&!canClose)return NextResponse.json({error:"Close permission required."},{status:403});
  if(parsed.data.status&&["OPEN","ASSIGNED"].includes(parsed.data.status)&&!canAssign)return NextResponse.json({error:"Status permission required."},{status:403});
  try {
   const ticket=await db.supportTicket.findUnique({where:{id:ticketId}});if(!ticket)return NextResponse.json({error:"Not found."},{status:404});
