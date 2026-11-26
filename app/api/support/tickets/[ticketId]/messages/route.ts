@@ -4,6 +4,21 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/rbac/authorize";
 const schema = z.object({ body: z.string().trim().min(1).max(4000) });
+export async function GET(_:NextRequest, context:{params:Promise<{ticketId:string}>}) {
+ const user=await getCurrentUser();if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
+ const {ticketId}=await context.params;
+ try {
+  const ticket=await db.supportTicket.findUnique({where:{id:ticketId}});
+  if(!ticket)return NextResponse.json({error:"Ticket not found."},{status:404});
+  const isStaff=await hasPermission("tickets.read");
+  if(ticket.authorId!==user.id&&!isStaff)return NextResponse.json({error:"Forbidden"},{status:403});
+  const [messages,notes]=await Promise.all([
+   db.supportMessage.findMany({where:{ticketId},include:{sender:{select:{displayName:true}}},orderBy:{createdAt:"asc"}}),
+   isStaff?db.ticketNote.findMany({where:{ticketId},orderBy:{createdAt:"asc"}}):Promise.resolve([])
+  ]);
+  return NextResponse.json({messages,notes});
+ } catch { return NextResponse.json({error:"Support storage is not configured."},{status:503}); }
+}
 export async function POST(request: NextRequest, context: { params: Promise<{ticketId:string}> }) {
   const user = await getCurrentUser();
   if (!user || user.isBanned) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
