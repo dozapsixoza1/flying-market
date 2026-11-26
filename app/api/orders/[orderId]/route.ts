@@ -1,0 +1,6 @@
+import {NextRequest,NextResponse} from "next/server";
+import {z} from "zod";
+import {db} from "@/lib/db";
+import {getCurrentUser} from "@/lib/auth/session";
+const schema=z.object({action:z.literal("cancel")});
+export async function PATCH(request:NextRequest,context:{params:Promise<{orderId:string}>}){const user=await getCurrentUser();if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Unsupported order action."},{status:400});const {orderId}=await context.params;try{const order=await db.order.findUnique({where:{id:orderId}});if(!order||order.buyerId!==user.id)return NextResponse.json({error:"Order not found."},{status:404});if(order.status!=="PENDING")return NextResponse.json({error:"Only pending orders can be cancelled."},{status:409});await db.$transaction(async tx=>{await tx.order.update({where:{id:orderId},data:{status:"CANCELLED",events:{create:{actorId:user.id,event:"order.cancelled"}}}});await tx.listing.updateMany({where:{id:order.listingId,status:"RESERVED"},data:{status:"ACTIVE"}})});return NextResponse.json({ok:true,status:"CANCELLED"});}catch{return NextResponse.json({error:"Could not cancel order."},{status:503});}}
