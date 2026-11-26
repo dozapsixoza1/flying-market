@@ -1,0 +1,17 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") directUrl = env("DIRECT_URL") }
+enum StaffRole { OWNER ADMIN MODERATOR HELPER }
+enum TicketStatus { OPEN ASSIGNED IN_PROGRESS WAITING RESOLVED CLOSED }
+enum ListingStatus { DRAFT PENDING ACTIVE RESERVED SOLD REJECTED ARCHIVED }
+model User { id String @id @default(cuid()) telegramId BigInt? @unique username String? @unique displayName String avatarUrl String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt staff StaffMember? listings Listing[] tickets SupportTicket[] @relation("TicketAuthor") }
+model StaffMember { id String @id @default(cuid()) userId String @unique role StaffRole isActive Boolean @default(true) createdAt DateTime @default(now()) user User @relation(fields:[userId],references:[id],onDelete:Cascade) }
+model Permission { id String @id @default(cuid()) key String @unique description String roles RolePermission[] }
+model RolePermission { id String @id @default(cuid()) role StaffRole permissionId String permission Permission @relation(fields:[permissionId],references:[id],onDelete:Cascade) @@unique([role,permissionId]) }
+model Game { id String @id @default(cuid()) slug String @unique name String isActive Boolean @default(true) listings Listing[] categories Category[] createdAt DateTime @default(now()) }
+model Category { id String @id @default(cuid()) gameId String name String slug String isActive Boolean @default(true) game Game @relation(fields:[gameId],references:[id],onDelete:Cascade) listings Listing[] @@unique([gameId,slug]) }
+model Listing { id String @id @default(cuid()) sellerId String gameId String categoryId String? title String description String priceMinor BigInt currency String @default("USD") status ListingStatus @default(DRAFT) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt seller User @relation(fields:[sellerId],references:[id]) game Game @relation(fields:[gameId],references:[id]) category Category? @relation(fields:[categoryId],references:[id]) @@index([gameId,status]) @@index([sellerId,createdAt]) }
+model SupportCategory { id String @id @default(cuid()) slug String @unique title String isActive Boolean @default(true) tickets SupportTicket[] }
+model SupportTicket { id String @id @default(cuid()) publicId String @unique authorId String categoryId String subject String status TicketStatus @default(OPEN) orderRef String? assignedTo String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt author User @relation("TicketAuthor",fields:[authorId],references:[id]) category SupportCategory @relation(fields:[categoryId],references:[id]) messages SupportMessage[] notes TicketNote[] @@index([status,updatedAt]) @@index([assignedTo,status]) }
+model SupportMessage { id String @id @default(cuid()) ticketId String senderId String body String isStaff Boolean @default(false) createdAt DateTime @default(now()) ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade) @@index([ticketId,createdAt]) }
+model TicketNote { id String @id @default(cuid()) ticketId String staffId String body String createdAt DateTime @default(now()) ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade) @@index([ticketId,createdAt]) }
+model StaffActivityLog { id String @id @default(cuid()) staffId String action String targetType String targetId String reason String? createdAt DateTime @default(now()) @@index([staffId,createdAt]) @@index([targetType,targetId]) }
