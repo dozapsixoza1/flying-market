@@ -19,6 +19,14 @@ export async function POST(request: NextRequest) {
       update: { username: telegramUser.username?.toLowerCase() ?? null, displayName: [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(" "), avatarUrl: telegramUser.photo_url ?? null, locale: telegramUser.language_code ?? "ru" }
     });
     if (user.isBanned) return NextResponse.json({ error: "Account is restricted." }, { status: 403 });
+    const ownerTelegramId = process.env.OWNER_TELEGRAM_ID;
+    if (ownerTelegramId && ownerTelegramId === String(telegramUser.id)) {
+      await db.staffMember.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, role: "OWNER", isActive: true },
+        update: { role: "OWNER", isActive: true }
+      });
+    }
     await createSession(user.id);
     return NextResponse.json({ user: { id: user.id, displayName: user.displayName, username: user.username, avatarUrl: user.avatarUrl } });
   } catch {
