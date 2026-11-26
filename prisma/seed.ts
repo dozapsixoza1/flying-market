@@ -32,6 +32,12 @@ async function main(){
   for(const label of cats){const catSlug=label.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");await db.category.upsert({where:{gameId_slug:{gameId:game.id,slug:catSlug}},create:{gameId:game.id,name:label,slug:catSlug},update:{name:label,isActive:true}})}
  }
  for(const [slug,title] of support) await db.supportCategory.upsert({where:{slug},create:{slug,title},update:{title,isActive:true}});
+ const faq = [
+  ["safe-trading","Как проходит сделка?","Выберите активное объявление, создайте заказ и общайтесь с продавцом в чате заказа. Оплата станет доступна после подключения поддерживаемого платёжного провайдера. Не передавайте пароли и коды подтверждения.","orders"],
+  ["listing-review","Почему объявление проходит модерацию?","Новые объявления проверяются перед публикацией. Это помогает исключить мошеннические, запрещённые и вводящие в заблуждение предложения.","listings"],
+  ["contact-support","Как связаться с поддержкой?","Откройте Центр поддержки, выберите категорию, укажите тему и подробно опишите вопрос. Ответ сотрудника появится в переписке вашего тикета.","support"]
+ ] as const;
+ for(const [slug,title,body,category] of faq) await db.faqArticle.upsert({where:{slug},create:{slug,title,body,category,isPublished:true},update:{title,body,category,isPublished:true}});
  for(const [key,description] of permissions) await db.permission.upsert({where:{key},create:{key,description},update:{description}});
  for(const role of Object.keys(grants) as StaffRole[]){
   for(const key of grants[role]){
