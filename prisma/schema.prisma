@@ -8,11 +8,11 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum StaffRole { OWNER ADMIN MODERATOR HELPER }
-enum TicketStatus { OPEN ASSIGNED IN_PROGRESS WAITING RESOLVED CLOSED }
-enum ListingStatus { DRAFT PENDING ACTIVE RESERVED SOLD REJECTED ARCHIVED }
-enum OrderStatus { PENDING PAID DELIVERED COMPLETED CANCELLED DISPUTED REFUNDED }
-enum ReportStatus { OPEN REVIEWING RESOLVED DISMISSED }
+enum StaffRole {\n  OWNER\n  ADMIN\n  MODERATOR\n  HELPER\n}
+enum TicketStatus {\n  OPEN\n  ASSIGNED\n  IN_PROGRESS\n  WAITING\n  RESOLVED\n  CLOSED\n}
+enum ListingStatus {\n  DRAFT\n  PENDING\n  ACTIVE\n  RESERVED\n  SOLD\n  REJECTED\n  ARCHIVED\n}
+enum OrderStatus {\n  PENDING\n  PAID\n  DELIVERED\n  COMPLETED\n  CANCELLED\n  DISPUTED\n  REFUNDED\n}
+enum ReportStatus {\n  OPEN\n  REVIEWING\n  RESOLVED\n  DISMISSED\n}
 
 model User {
   id             String          @id @default(cuid())
