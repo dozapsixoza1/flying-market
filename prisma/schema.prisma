@@ -325,3 +325,23 @@ model CannedResponse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+
+/// Immutable payment records. Provider execution remains disabled until an
+/// adult-operated merchant account and verified provider integration exist.
+model PaymentTransaction {
+  id                String          @id @default(cuid())
+  orderId           String
+  provider          PaymentProvider
+  status            PaymentStatus   @default(CREATED)
+  amountMinor       BigInt
+  currency          String
+  idempotencyKey    String          @unique
+  providerPaymentId String?         @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([provider, status, createdAt])
+}
