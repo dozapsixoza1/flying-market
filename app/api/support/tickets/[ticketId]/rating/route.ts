@@ -1,0 +1,6 @@
+import {NextRequest,NextResponse} from "next/server";
+import {z} from "zod";
+import {db} from "@/lib/db";
+import {getCurrentUser} from "@/lib/auth/session";
+const schema=z.object({score:z.number().int().min(1).max(5),comment:z.string().trim().max(500).optional()});
+export async function POST(request:NextRequest,context:{params:Promise<{ticketId:string}>}){const user=await getCurrentUser();if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Rating must be from 1 to 5."},{status:400});try{const {ticketId}=await context.params;const ticket=await db.supportTicket.findUnique({where:{id:ticketId}});if(!ticket||ticket.authorId!==user.id)return NextResponse.json({error:"Ticket not found."},{status:404});if(!["RESOLVED","CLOSED"].includes(ticket.status))return NextResponse.json({error:"Resolve the ticket before rating it."},{status:409});const rating=await db.supportRating.upsert({where:{ticketId},create:{ticketId,userId:user.id,...parsed.data},update:parsed.data});return NextResponse.json({rating},{status:201});}catch{return NextResponse.json({error:"Could not save rating."},{status:503});}}
